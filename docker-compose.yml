@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  percona:
+    image: percona-debian:1.0
+    container_name: ${CONTAINER_NAME}
+    ports:
+      - "${MYSQL_PORT}:3306"
+    volumes:
+      - percona_data:/var/lib/mysql
+    restart: unless-stopped
+
+volumes:
+  percona_data:
