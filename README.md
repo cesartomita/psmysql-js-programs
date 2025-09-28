@@ -476,6 +476,7 @@ No teste com a base Disneyland Reviews, a função com JS Programs demonstrou se
 | Bechmark           | 100.000                    |  6.094  | 1.390  | 4.39x       | 77.19%    |
 | Bechmark           | 1.000.000                  | 60.453  | 13.610 | 4.44x       | 77.49%    |
 | Disneyland Reviews | 42.656                     | 92.264  | 3.409  | 27.06x      | 96.31%    |
+
 *(s) = tempo em segundos*
 
 Gráfico de linhas comparando o tempo de execução (em segundos) entre as funções SQL e JS no teste do BENCHMARK:
@@ -556,6 +557,7 @@ Tabela detalhada:
 | LENGTH          | Benchmark          | 0.015         | 6.922        | 461.5x      | 99.8 %    |
 | TO_BASE64       | Disneyland Reviews | 0.797         | 2.297        | 2.88x       | 65.3 %    |
 | TO_BASE64       | Benchmark          | 0.093         | 10.641       | 114.5x      | 99.1 %    |
+
 *(s) = tempo em segundos*
 
 Visualizando em um gráfico de colunas, fica claro a diferença de tempo gasto entre as funções de SQL nativas contra JS programs:
@@ -700,6 +702,8 @@ Os resultados obtidos foram bem interessantes, segue abaixo:
 | 10.000    | 45.047        | 31.000       | 1.45x            | 31.2%          |
 | 50.000    | 205.125       | 182.063      | 1.13x            | 11.2%          |
 | 100.000   | 361.109       | 372.203      | 0.97x            | -3.1%          |
+
+*(s) = tempo em segundos*
 
 Visualizando em um gráfico de linhas:
 
