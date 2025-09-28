@@ -476,6 +476,7 @@ No teste com a base Disneyland Reviews, a função com JS Programs demonstrou se
 | Bechmark           | 100.000                    |  6.094  | 1.390  | 4.39x       | 77.19%    |
 | Bechmark           | 1.000.000                  | 60.453  | 13.610 | 4.44x       | 77.49%    |
 | Disneyland Reviews | 42.656                     | 92.264  | 3.409  | 27.06x      | 96.31%    |
+*(s) = tempo em segundos*
 
 Gráfico de linhas comparando o tempo de execução (em segundos) entre as funções SQL e JS no teste do BENCHMARK:
 
@@ -555,6 +556,7 @@ Tabela detalhada:
 | LENGTH          | Benchmark          | 0.015         | 6.922        | 461.5x      | 99.8 %    |
 | TO_BASE64       | Disneyland Reviews | 0.797         | 2.297        | 2.88x       | 65.3 %    |
 | TO_BASE64       | Benchmark          | 0.093         | 10.641       | 114.5x      | 99.1 %    |
+*(s) = tempo em segundos*
 
 Visualizando em um gráfico de colunas, fica claro a diferença de tempo gasto entre as funções de SQL nativas contra JS programs:
 
@@ -656,7 +658,6 @@ Depois dessa bateria de testes, deixo os resultados abaixo:
 | BENCHMARK        | 1.000.000             | 108,344       | 7,609        | 14,24x      | 93,0%     |
 | UPDATE employees | 300.024               | 47,047        | 14,016       | 3,36x       | 70,2%     |
 
-
 Gráfico de linhas com as comparações de tempo de execução do teste de BENCHMARK:
 
 ![chart_ulid_bechmark](images/chart_ulid_benchmark.png)
@@ -665,7 +666,7 @@ Gráfico de barras com as comparações de tempo de execução do teste de UPDAT
 
 ![chart_ulid_employees](images/chart_ulid_employees.png)
 
-Conclusões:
+**Conclusões:**
 
 Nos testes com BENCHMARK, a função em **JS programs** mostrou ganhos consistentes e consideraveis, chegando a 14 vezes mais rápido em 1 milhão de iterações.
 
