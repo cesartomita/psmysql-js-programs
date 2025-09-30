@@ -394,15 +394,14 @@ Chegamos a melhor parte do projeto!
 
 Aqui vou demonstrar alguns testes de performance de funções e procedures usando JavaScript no MySQL. Também vou fazer comparações entre funções com SQL puro e JS programs, ver se existem diferenças de desempenho e em quais cenários cada abordagem se sai melhor.
 
-Nos resultados dos testes abaixo, podem existem campos que chamei de **Speedup** e **Ganho**:
+Nos resultados dos testes abaixo, podem existir campos que chamei de **Speedup** e **Ganho**:
 
 - Speedup: Indica quantas vezes o teste otimizado é mais rápido que o teste original.
 ```
-Fórmula: Speedup = tempo_original / tempo_otimizado
+Speedup = tempo_original / tempo_otimizado
 ```
 
-- Ganho de Performance: Medida percentual da redução no tempo ou recurso consumido em comparação ao
-Fórmula:
+- Ganho de Performance: Medida percentual da redução no tempo ou recurso consumido em comparação ao teste original.
 ```
 Ganho = (tempo_original - tempo_otimizado) / tempo_original * 100
 ```
