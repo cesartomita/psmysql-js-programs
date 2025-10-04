@@ -782,3 +782,35 @@ Execute o comando abaixo para conceder os privilégios ao seu usuário:
 GRANT CREATE_JS_ROUTINE, CREATE ROUTINE ON *.* TO 'seu_usuario'@'localhost';
 FLUSH PRIVILEGES;
 ```
+
+## Problema ao importar arquivo no MySQL:
+
+Ao tentar importar um arquivo para o MySQL, como por exemplo um CSV, você pode receber o seguinte erro:
+
+```
+Error Code: 1290. The MySQL server is running with the --secure-file-priv option
+```
+
+Esse erro significa que o MySQL está rodando com a variável `secure_file_priv` habilitada.
+
+Essa variável restringe os diretórios permitidos para importar/exportar arquivos (`LOAD DATA INFILE`, `SELECT ... INTO OUTFILE` e entre outros).
+
+Basicamente, você está tentando carregar um arquivo em um local que o MySQL considera inseguro.
+
+Para descobrir qual é o diretório seguro, execute:
+
+```sql
+SHOW VARIABLES LIKE 'secure_file_priv';
+```
+
+Exemplo de resultado:
+
+```
++------------------+-----------------------+
+|  Variable_name   |         Value         |
++------------------+-----------------------+
+| secure_file_priv | /var/lib/mysql-files/ |
++------------------+-----------------------+
+```
+
+No meu caso, resolvi o problema movendo o arquivo para o diretório seguro, que no exemplo acima é `/var/lib/mysql-files/`.
