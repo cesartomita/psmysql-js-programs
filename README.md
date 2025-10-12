@@ -50,10 +50,12 @@ Documentações de apoio:
     2. [Comparativo entre funções UPPER, LENGTH e TO_BASE64](#comparativo-entre-funções-upper-length-e-to_base64)
     3. [Criando função de ULID](#criando-função-de-ulid)
     4. [Realizando INSERT em loop usando a função ULID](#realizando-insert-em-loop-usando-a-função-ulid)
+    5. [Calculando dados em JSON](#calculando-dados-em-json)
 7. [Erros comuns](#erros-comuns)
     1. [Erro ao conectar via GUI](#erro-ao-conectar-via-gui)
     2. [Erro: This function has none of DETERMINISTIC](#erro-this-function-has-none-of-deterministic)
     3. [Erro de privilégio CREATE_JS_ROUTINE](#erro-de-privilégio-create_js_routine)
+    4. [Problema ao importar arquivo no MySQL](#problema-ao-importar-arquivo-no-mysql)
 
 ## Início rápido
 
@@ -716,6 +718,96 @@ Visualizando em um gráfico de linhas:
 - O ganho da função JS sobre SQL ficou entre 11% e 31% na maior parte dos testes.
 - Em volumes baixos a médios (100 a 10k), a função JS teve vantagem consistente.
 - Em volumes mais altos (50k a 100k), a diferença fica equilibrada. Em 100k inserts, o SQL superou o JS (pouco mais de 3%), mostrando que em volumes mais altos o SQL pode ser ligeiramente melhor devido a overheads no motor JS ou variações de I/O.
+
+## Calculando dados em JSON
+
+Foi utilizado nesse teste o dataset [Flight Data](https://www.tablab.app/json/sample), ele possui 1 milhão de registros.
+
+Exemplo de um JSON do databse:
+
+```json
+{
+    "FL_DATE":"2006-01-01",
+    "DEP_DELAY":5,
+    "ARR_DELAY":19,
+    "AIR_TIME":350,
+    "DISTANCE":2475,
+    "DEP_TIME":9.083333,
+    "ARR_TIME":12.483334
+}
+```
+
+O objetivo foi realizar alguns testes simples, como calcular:
+
+- Tempo total de atraso dos voos
+- Velocidade média de cada voo
+
+Para isso, foram criadas duas funções JS programs:
+
+- [fn_js_flight_total_delay](sql_queries/fn_js_flight_total_delay.sql)
+- [fn_js_flight_duration_minutes](sql_queries/fn_js_flight_duration_minutes.sql)
+
+A intenção é comparar o desempenho e a praticidade das funções nativas do MySQL com as funções desenvolvidas em JS programs para análise de dados em formato JSON.
+
+### Tempo total de atraso dos voos
+
+Para calcular o tempo total, usei a seguinte fórmula: `ARR_DELAY - DEP_DELAY`.
+
+As querys SQL usadas nesse teste estão aqui: [query_flight_total_delay](sql_queries/query_flight_total_delay.sql).
+
+Foi feito testes usando `LIMIT` de 100 a 1.000.000 registros, comparando o desempenho entre a função SQL nativa e a função com JS programs.
+
+| Registros | Tempo SQL (s) | Tempo JS (s) | Speedup | Ganho (%) |
+| --------- | ------------- | ------------ | ------- | --------- |
+|       100 |         0.000 |        0.000 |       - |         - |
+|     1.000 |         0.016 |        0.000 |       - |         - |
+|    10.000 |         0.016 |        0.250 |   15.6x |     93.6% |
+|   100.000 |         0.360 |        2.000 |    5.6x |     82.0% |
+| 1.000.000 |         3.219 |       24.516 |    7.6x |     86.9% |
+
+Visualizando em um gráfico de linhas:
+
+![chart_flight_total_delay](images/chart_flight_total_delay.png)
+
+- Até 1.000 registros, não teve diferença de performance entre a função com SQL com JS programs. Os tempos são praticamente instantâneos.
+- A partir de 10.000 registros, o SQL nativo se mostra consistentemente superior, com ganhos acima de 80%.
+- No maior volume, 1 milhão de registros, o SQL foi mais de 7 vezes mais rápido que a execução via função JS programs.
+
+### Duração dos voos
+
+Para calcular a duração dos voos, foi utilizada a seguinte lógica: `ARR_TIME - DEP_TIME`.
+
+Caso o resultado seja menor que zero, é adicionado 24 horas ao cálculo, para corrigir situações em que o voo ultrapassa a meia-noite.
+
+Por fim, o valor é multiplicado por 60 para converter o resultado em minutos.
+
+As querys SQL usadas nesse teste estão aqui: [query_flight_duration_minutes](sql_queries/query_flight_duration_minutes).
+
+Foi feito testes usando `LIMIT` de 100 a 1.000.000 registros, comparando o desempenho entre a função SQL nativa e a função com JS programs.
+
+| Registros | Tempo SQL (s) | Tempo JS (s) | Speedup | Ganho (%) |
+| --------- | ------------- | ------------ | --------|---------- |
+|       100 |         0.000 |        0.000 |       - |         - |
+|     1.000 |         0.016 |        0.000 |       - |         - |
+|    10.000 |         0.062 |        0.250 |    4.0x |     75.2% |
+|   100.000 |         0.750 |        2.172 |    2.9x |     65.5% |
+| 1.000.000 |         6.079 |       23.453 |    3.9x |     74.1% |
+
+Visualizando em um gráfico de linhas:
+
+![chart_query_flight_duration_minutes](images/chart_query_flight_duration_minutes.png)
+
+- Em volumes pequenos, 100 até 1.000 registros, não houve diferença de perfomrance. O tempo para ambos os testes  SQL e JS programs, foram o mesmo.
+- Para 10.000 até 100.000 registros, o SQL foi cerca de 3 a 4 vezes mais rápido que a função JS.
+- Em 1 milhão de registros, o SQL finalizou em 6 segundos, enquanto o JS programs levou 23 segundos. Uma diferença de 74% de ganho de performance.
+
+### Conclusão:
+
+- Em volumes pequenos, até 10.000 registros, os testes não apresentaram diferença significativa de tempo nos resultados.
+- A partir de volumes maiores, de 100.000 registros ou mais, a função nativa do SQL mostrou ser mais eficiente.
+- As funções nativas SQL (JSON_VALUE) foram muito mais eficientes do que funções em JavaScript no MySQL, principalmente quando o volume de dados cresce.
+- Mesmo usando lógicas condicionais no SQL (CASE WHEN), o mesmo se manteve com um bom desempenho.
+- As funções JS exigem execução do motor V8, conversão de tipos e chamadas externas para cada linha, o que impactou a performance.
 
 # Erros comuns
 
