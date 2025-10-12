@@ -757,6 +757,8 @@ As querys SQL usadas nesse teste estão aqui: [query_flight_total_delay](sql_que
 
 Foi feito testes usando `LIMIT` de 100 a 1.000.000 registros, comparando o desempenho entre a função SQL nativa e a função com JS programs.
 
+Resultados dos testes:
+
 | Registros | Tempo SQL (s) | Tempo JS (s) | Speedup | Ganho (%) |
 | --------- | ------------- | ------------ | ------- | --------- |
 |       100 |         0.000 |        0.000 |       - |         - |
@@ -784,6 +786,8 @@ Por fim, o valor é multiplicado por 60 para converter o resultado em minutos.
 As querys SQL usadas nesse teste estão aqui: [query_flight_duration_minutes](sql_queries/query_flight_duration_minutes).
 
 Foi feito testes usando `LIMIT` de 100 a 1.000.000 registros, comparando o desempenho entre a função SQL nativa e a função com JS programs.
+
+Resultados dos testes:
 
 | Registros | Tempo SQL (s) | Tempo JS (s) | Speedup | Ganho (%) |
 | --------- | ------------- | ------------ | --------|---------- |
