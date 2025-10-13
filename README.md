@@ -783,7 +783,7 @@ Caso o resultado seja menor que zero, é adicionado 24 horas ao cálculo, para c
 
 Por fim, o valor é multiplicado por 60 para converter o resultado em minutos.
 
-As querys SQL usadas nesse teste estão aqui: [query_flight_duration_minutes](sql_queries/query_flight_duration_minutes).
+As querys SQL usadas nesse teste estão aqui: [query_flight_duration_minutes](sql_queries/query_flight_duration_minutes.sql).
 
 Foi feito testes usando `LIMIT` de 100 a 1.000.000 registros, comparando o desempenho entre a função SQL nativa e a função com JS programs.
 
