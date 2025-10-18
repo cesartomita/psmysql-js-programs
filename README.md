@@ -1,7 +1,5 @@
 # Percona Server MySQL (Docker + Debian)
 
-> **Projeto em andamento:** Novos testes ainda serão implementados.
-
 Este projeto disponibiliza um ambiente **Percona Server for MySQL** rodando em **Docker**, baseado em **Debian**.
 
 A ideia é explorar o suporte experimental a Stored Programs em JavaScript (JS), recurso introduzido recentemente pelo Percona.
@@ -82,27 +80,55 @@ Esse comando faz, em sequência:
 
 ```
 percona-mysql-js/
-├── .env
-├── docker-compose.yml
-├── Dockerfile
-├── README.md
+│   .env
+│   docker-compose.yml
+│   Dockerfile
+│   README.md
 │
-├── images/
-│   ├── error_connect.png
-│   ├── error_deterministic.png
-│   ├── fn_fact.png
-│   └── sp_is_prime.png
+├───images
+│       chart_capitalize_words_benchmark.png
+│       chart_capitalize_words_disney.png
+│       chart_flight_total_delay.png
+│       chart_query_flight_duration_minutes.png
+│       chart_ulid_benchmark.png
+│       chart_ulid_employees.png
+│       chart_ulid_loop_insert.png
+│       chart_upper_length_base64.png
+│       clear_console_log.png
+│       clear_console_log_2.png
+│       error_connect.png
+│       error_create_js_routine.png
+│       error_deterministic.png
+│       fn_fact.png
+│       sp_console_log.png
+│       sp_error_test.png
+│       sp_is_prime.png
+│       sp_len.png
 │
-├── js_functions/
-│   ├── fn_fact.js
-│   └── fn_generate_ulid.js
+├───scripts
+│       grant_root_permission.sh
+│       install_js_programs.sh
 │
-├── scripts/
-│   ├── grant_root_permission.sh
-│   └── install_js_programs.sh
-│
-└── sql_queries/
-    └── routines_info.sql
+└───sql_queries
+        benchmark_capitalize_words.sql
+        benchmark_ulid.sql
+        call_insert_tb_ulid.sql
+        fn_js_base64.sql
+        fn_js_capitalize_words.sql
+        fn_js_flight_duration_minutes.sql
+        fn_js_flight_total_delay.sql
+        fn_js_length.sql
+        fn_js_ulid.sql
+        fn_js_upper_case.sql
+        fn_sql_capitalize_words.sql
+        fn_sql_ulid.sql
+        performance_schema.sql
+        query_flight_duration_minutes.sql
+        query_flight_total_delay.sql
+        review_text.sql
+        sp_insert_ulid_js.sql
+        sp_insert_ulid_sql.sql
+        tb_ulid.sql
 ```
 
 ### Build da imagem
