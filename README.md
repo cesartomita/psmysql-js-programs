@@ -193,7 +193,7 @@ Utilize os comandos `CREATE FUNCTION` ou `CREATE PROCEDURE` sempre incluindo a c
 O código JavaScript deve ser delimitado por `$$` para evitar conflitos com o delimitador padrão do MySQL.
 
 > **Observação:**  
-> Em versões mais antigas do MySQL, pode ser necessário alterar o delimitador padrão utilizando o comando `DELIMITER $$` antes de criar a função ou procedure. Isso garante que o cliente mysql interprete corretamente o início e o fim do
+> Em versões mais antigas do MySQL, pode ser necessário alterar o delimitador padrão utilizando o comando `DELIMITER $$` antes de criar a função ou procedure. Isso garante que o cliente mysql interprete corretamente o início e o fim do bloco de código JavaScript.
 
 Exemplo:
 
@@ -238,7 +238,7 @@ Screenshot:
 
 ![fn_fact](images/fn_fact.png)
 
-### Exemplo de criação de uma procedure em JS
+### Exemplo de criação de uma procedure em JS:
 
 Ao criar uma procedure com JS programs, alguns pontos de atenção:
 
