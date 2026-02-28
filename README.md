@@ -657,7 +657,7 @@ WHERE
 UPDATE
 	employees
 SET
-	ulid = fn_sql_ulid()
+	ulid = fn_js_ulid()
 WHERE
 	ulid IS NULL;
 ```
