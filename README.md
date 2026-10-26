@@ -1,88 +1,122 @@
-# Percona Server MySQL (Docker + Debian)
+# Percona Server for MySQL 8.4 LTS - JS Stored Programs (Docker)
 
-Este projeto disponibiliza um ambiente **Percona Server for MySQL** rodando em **Docker**, baseado em **Debian**.
+> **Nota de atualização:** Este projeto foi atualizado para utilizar a versão oficial do **Percona Server 8.4 LTS** (`percona/percona-server:8.4` + pacote `percona-server-js`). Anteriormente, na época do lançamento inicial, a instalação era feita via repositório `ps-84-lts experimental` em uma imagem Debian.
 
-A ideia é explorar o suporte experimental a Stored Programs em JavaScript (JS), recurso introduzido recentemente pelo Percona.
+Este projeto disponibiliza um ambiente **Percona Server for MySQL 8.4 LTS** rodando em **Docker**, estendendo a imagem oficial `percona/percona-server:8.4` com suporte a **Stored Programs em JavaScript (Google V8)**.
 
-Minha intenção com este projeto é **testar e experimentar** essa novidade do Percona Server MySQL.
+A Percona disponibilizou esse recurso especificamente na linha **Percona Server for MySQL 8.4 LTS** (em Tech Preview a partir da versão `8.4.7-7`).
 
-Pode ver a publicação oficial no link abaixo:
+Minha intenção com este projeto é **testar e experimentar** essa funcionalidade na prática, além de comparar sua performance com funções nativas em SQL.
 
-[Introducing Experimental Support for Stored Programs in JS in Percona Server for MySQL](https://www.percona.com/blog/introducing-experimental-support-for-stored-programs-in-js-in-percona-server-for-mysql/).  
+Artigos oficiais da Percona sobre o recurso:
+
+- **[Introducing Experimental Support for Stored Programs in JS in Percona Server for MySQL](https://www.percona.com/blog/introducing-experimental-support-for-stored-programs-in-js-in-percona-server-for-mysql/)**: O anúncio inicial que introduziu o suporte a rotinas em JavaScript usando o motor **Google V8** (open-source), trazendo para a comunidade uma alternativa gratuita e aberta ao recurso que a Oracle restringiu ao MySQL Enterprise Edition / HeatWave.
+- **[JavaScript Stored Routines in Percona Server for MySQL: A New Era for Database Programmability](https://www.percona.com/blog/javascript-stored-routines-in-percona-server-for-mysql-a-new-era-for-database-programmability/)**: Detalha a chegada do recurso à linha **Percona Server 8.4 LTS** (via `component_js_lang`), destacando casos de uso como manipulação nativa de JSON, validação de dados complexos e algoritmos intensivos de CPU (ex.: distância de Levenshtein, geração de identificadores e formatação de strings).
+- **[JavaScript in MySQL: Extending SQL, Not Moving the Application](https://www.percona.com/blog/javascript-in-mysql-extending-sql-not-moving-the-application/)**: Aborda a visão arquitetural por trás do recurso — o objetivo **não é transformar o banco em um servidor de aplicação**, mas sim **estender o vocabulário do SQL** onde o SQL/PSM tradicional é limitado ou verboso.
 
 Objetivos do projeto:
 
-- Subir um container a partir de uma **imagem Debian**,  
-- Instalar e configurar os **repositórios oficiais do Percona**,  
+- Estender a **imagem oficial do Percona Server 8.4 LTS** (`percona/percona-server:8.4`) instalando o pacote `percona-server-js`,  
+- Ativar automaticamente o componente V8 (`component_js_lang`) e permissões via `init.sql`,  
 - Criar funções e procedures em **JavaScript dentro do MySQL**,  
 - Fazer **testes de performance e usabilidade** para avaliar se esse recurso pode ajudar em transformações diretamente no banco de dados.  
-
-Este projeto é **puramente experimental** e serve para aprendizado, curiosidade e testes.
 
 Documentações de apoio:  
 - [Percona Software Repositories Documentation](https://docs.percona.com/percona-software-repositories/index.html)
 - [JS stored procedure and function overview](https://docs.percona.com/percona-server/8.4/js-lang-overview.html) 
 
+### Por que o JavaScript não vem habilitado por padrão na versão 8.4 LTS?
+
+Pense na versão LTS de um banco de dados como uma ferrovia comercial: o objetivo primordial dela é estabilidade absoluta e previsibilidade para trens de carga pesada. Colocar um motor novo em Tech Preview (como o Google V8) ligado direto no trilho principal sem você pedir seria um risco desnecessário para ambientes de produção.
+
+Por isso, a engenharia da Percona empacotou o JavaScript como um vagão modular de acoplamento rápido (**Component**): se você não instalar e não der o comando de ligar, o motor principal do MySQL 8.4 LTS continua 100% puro, leve e sem risco de efeitos colaterais.
+
+Para funcionar, são necessários dois passos (já automatizados neste projeto):
+1. **O binário do motor (`Dockerfile`):** A imagem oficial (`percona/percona-server:8.4`, baseada em Red Hat UBI minimal) não inclui as bibliotecas do Google V8 por padrão para manter a imagem leve. Instalamos o pacote complementar `percona-server-js` (`component_js_lang.so`) via `microdnf`.
+2. **A ativação no SQL (`init.sql`):** Registrar o componente com `INSTALL COMPONENT 'file://component_js_lang';` e conceder a permissão especial `CREATE_JS_ROUTINE`.
+
+### Estendendo o SQL, e não movendo a aplicação para o banco
+
+Como explicado no artigo *[JavaScript in MySQL: Extending SQL, Not Moving the Application](https://www.percona.com/blog/javascript-in-mysql-extending-sql-not-moving-the-application/)*, o motor `component_js_lang` roda em um **sandbox estrito** com limites de execução bem definidos para evitar anti-padrões:
+- **Sem I/O de rede:** Sem `fetch()`, sockets ou chamadas para APIs/microsserviços externos.
+- **Sem acesso ao sistema de arquivos:** Não lê nem escreve arquivos locais no servidor.
+- **Sem ecossistema Node.js/npm:** Sem `require()`, `process` ou pacotes externos.
+- **Execução 100% síncrona:** Projetado para funções utilitárias rápidas, validação e transformação de dados junto ao banco, exatamente onde os benchmarks deste repositório mostram maior ganho (como capitalização complexa de strings e geração de ULID).
+
+> [!WARNING]
+> **Atenção (Limitação atual do Tech Preview):**  
+> Não tente rodar comandos SQL relacionais (como `SELECT * FROM tabela`) dentro do corpo JavaScript ainda. Nessa compilação de Tech Preview, a API interna para executar queries SQL dentro da função JS ainda não está finalizada. Utilize o JavaScript estritamente para **computação determinística** (*Input $\rightarrow$ Processamento de String/JSON/Cálculo $\rightarrow$ Retorno*).
+
 ## Índice
 
-1. [Início rápido](#início-rápido)
-2. [Setup detalhado](#setup-detalhado)
-    1. [Estrutura do projeto](#estrutura-do-projeto)
-    2. [Build da imagem](#build-da-imagem)
-    3. [Subindo o container](#subindo-o-container)
-    4. [Acessando o container](#acessando-o-container)
-    5. [Conectando no banco de dados](#conectando-no-banco-de-dados)
-3. [Criando funções e procedures em JavaScript](#criando-funções-e-procedures-em-javascript)
-    1. [Instalando o JS stored program](#instalando-o-js-stored-program)
-    2. [Criando funções e procedures em JavaScript no Percona Server MySQL](#criando-funções-e-procedures-em-javascript-no-percona-server-mysql)
-    3. [Exemplo de criação de função em JS](#exemplo-de-criação-de-função-em-js)
-    4. [Exemplo de criação de uma procedure em JS](#exemplo-de-criação-de-uma-procedure-em-js)
-    5. [Exemplo de procedure com parâmetros IN e OUT](#exemplo-de-procedure-com-parâmetros-in-e-out)
-4. [Consultando rotinas JS com INFORMATION_SCHEMA.ROUTINES](#consultando-rotinas-js-com-information_schemaroutines)
-5. [Usando console.log e visualizando logs/erros de JS](#usando-consolelog-e-visualizando-logserros-de-js)
-    1. [Criando uma procedure com console.log](#criando-uma-procedure-com-consolelog)
-    2. [Visualizando erros no JS](#visualizando-erros-no-js)
-    3. [Criando um erro personalizado](#criando-um-erro-personalizado)
-6. [Testes de performance](#testes-de-performance)
-    1. [Capitalização de textos](#captalização-de-textos)
-    2. [Comparativo entre funções UPPER, LENGTH e TO_BASE64](#comparativo-entre-funções-upper-length-e-to_base64)
-    3. [Criando função de ULID](#criando-função-de-ulid)
-    4. [Realizando INSERT em loop usando a função ULID](#realizando-insert-em-loop-usando-a-função-ulid)
-    5. [Calculando dados em JSON](#calculando-dados-em-json)
-7. [Erros comuns](#erros-comuns)
-    1. [Erro ao conectar via GUI](#erro-ao-conectar-via-gui)
-    2. [Erro: This function has none of DETERMINISTIC](#erro-this-function-has-none-of-deterministic)
-    3. [Erro de privilégio CREATE_JS_ROUTINE](#erro-de-privilégio-create_js_routine)
-    4. [Problema ao importar arquivo no MySQL](#problema-ao-importar-arquivo-no-mysql)
+- [Percona Server for MySQL 8.4 LTS - JS Stored Programs (Docker)](#percona-server-for-mysql-84-lts---js-stored-programs-docker)
+    - [Por que o JavaScript não vem habilitado por padrão na versão 8.4 LTS?](#por-que-o-javascript-não-vem-habilitado-por-padrão-na-versão-84-lts)
+    - [Estendendo o SQL, e não movendo a aplicação para o banco](#estendendo-o-sql-e-não-movendo-a-aplicação-para-o-banco)
+  - [Índice](#índice)
+  - [Início rápido](#início-rápido)
+  - [Setup detalhado](#setup-detalhado)
+    - [Estrutura do Projeto](#estrutura-do-projeto)
+    - [Subindo o container](#subindo-o-container)
+    - [Acessando o container e testando na prática](#acessando-o-container-e-testando-na-prática)
+    - [Conectando no banco de dados](#conectando-no-banco-de-dados)
+  - [Criando funções e procedures em JavaScript](#criando-funções-e-procedures-em-javascript)
+    - [Instalando o JS stored program](#instalando-o-js-stored-program)
+    - [Criando funções e procedures em JavaScript no Percona Server MySQL](#criando-funções-e-procedures-em-javascript-no-percona-server-mysql)
+      - [1. Usando `$$` com `DELIMITER //` (Recomendado no MySQL Workbench / DBeaver com `;` no JS)](#1-usando--com-delimiter--recomendado-no-mysql-workbench--dbeaver-com--no-js)
+      - [2. Usando `$$` direto (No terminal `mysql` ou omitindo `;` internos do JS na GUI)](#2-usando--direto-no-terminal-mysql-ou-omitindo--internos-do-js-na-gui)
+      - [3. Usando aspas simples `'...'` no lugar de `$$` (Funciona em qualquer GUI sem `DELIMITER`)](#3-usando-aspas-simples--no-lugar-de--funciona-em-qualquer-gui-sem-delimiter)
+    - [Exemplo de criação de função em JS:](#exemplo-de-criação-de-função-em-js)
+    - [Exemplo de criação de uma procedure em JS:](#exemplo-de-criação-de-uma-procedure-em-js)
+    - [Exemplo de Procedure com parâmetros `IN` e `OUT`:](#exemplo-de-procedure-com-parâmetros-in-e-out)
+  - [Consultando rotinas JS com INFORMATION\_SCHEMA.ROUTINES](#consultando-rotinas-js-com-information_schemaroutines)
+  - [Usando `console.log` e visualizando logs/erros de JS](#usando-consolelog-e-visualizando-logserros-de-js)
+    - [Criando uma procedure com `console.log`:](#criando-uma-procedure-com-consolelog)
+    - [Visualizando erros no JS:](#visualizando-erros-no-js)
+    - [Criando um erro personalizado:](#criando-um-erro-personalizado)
+- [Testes de performance](#testes-de-performance)
+  - [Captalização de textos:](#captalização-de-textos)
+  - [Comparativo entre funções UPPER, LENGTH e TO\_BASE64](#comparativo-entre-funções-upper-length-e-to_base64)
+  - [Criando função de ULID](#criando-função-de-ulid)
+  - [Realizando INSERT em loop usando a função ULID](#realizando-insert-em-loop-usando-a-função-ulid)
+  - [Calculando dados em JSON](#calculando-dados-em-json)
+    - [Tempo total de atraso dos voos](#tempo-total-de-atraso-dos-voos)
+    - [Duração dos voos](#duração-dos-voos)
+    - [Conclusão:](#conclusão)
+  - [Validação de emails com REGEX](#validação-de-emails-com-regex)
+    - [Validação de E-mail: Média Geral dos Testes](#validação-de-e-mail-média-geral-dos-testes)
+- [Erros comuns](#erros-comuns)
+  - [Erro ao conectar via GUI:](#erro-ao-conectar-via-gui)
+  - [Erro: "This function has none of DETERMINISTIC":](#erro-this-function-has-none-of-deterministic)
+  - [Erro de privilégio CREATE\_JS\_ROUTINE:](#erro-de-privilégio-create_js_routine)
+  - [Problema ao importar arquivo no MySQL:](#problema-ao-importar-arquivo-no-mysql)
+  - [Erro no boot do container: "Another process with pid ... is using unix socket file":](#erro-no-boot-do-container-another-process-with-pid--is-using-unix-socket-file)
 
 ## Início rápido
 
-Se você quer subir o ambiente e começar a testar rapidamente, use o comando abaixo:
+Se você quer subir o ambiente completo e começar a testar rapidamente, basta executar:
 
 ```bash
-docker build -t percona-debian:1.0 . && \
-docker-compose up -d && \
-docker exec -it my-percona bash /tmp/grant_root_permission.sh && \
-docker exec -it my-percona bash /tmp/install_js_programs.sh
+docker compose up -d --build
 ```
 
-Esse comando faz, em sequência:
+Esse comando faz, automaticamente:
 
-1. Build da imagem percona-debian:1.0
-2. Sobe o container via docker-compose
-3. Executa os scripts de permissões do root e de instalação dos componentes JS programs
+1. Build da imagem customizada estendendo `percona/percona-server:8.4` com o pacote `percona-server-js`
+2. Sobe o container `percona_84_js`
+3. No primeiro boot, executa automaticamente o script `init.sql` (em `/docker-entrypoint-initdb.d/init.sql`), instalando o componente `component_js_lang`, concedendo a permissão `CREATE_JS_ROUTINE` aos usuários `root` e `dev`, e criando a função de teste `formata_usuario` no banco `sandbox`
 
-> O MySQL ficará disponível na porta 9999 por padrão. Para alterar, edite o arquivo .env.
+> O MySQL ficará disponível na porta `3306` por padrão. Para alterar a porta, nome do container ou credenciais, edite o arquivo `.env`.
 
 ## Setup detalhado
 
 ### Estrutura do Projeto 
 
 ```
-percona-mysql-js/
+percona-server-mysql-js-programs/
 │   .env
 │   docker-compose.yml
 │   Dockerfile
+│   init.sql
 │   README.md
 │
 ├───images
@@ -104,10 +138,6 @@ percona-mysql-js/
 │       sp_error_test.png
 │       sp_is_prime.png
 │       sp_len.png
-│
-├───scripts
-│       grant_root_permission.sh
-│       install_js_programs.sh
 │
 └───sql_queries
         benchmark_capitalize_words.sql
@@ -131,80 +161,136 @@ percona-mysql-js/
         tb_ulid.sql
 ```
 
-### Build da imagem
-
-Crie a imagem Docker a partir do **Dockerfile**, use o comando abaixo:
-
-```bash
-docker build -t percona-debian:1.0 .
-```
-
 ### Subindo o container
 
-Após criar a imagem, suba o container com:
+Para construir a imagem e subir o container em segundo plano:
 
 ```bash
-docker-compose up -d
+docker compose up -d --build
 ```
-> O MySQL ficará disponível na porta 9999 por padrão. Para alterar, edite o arquivo .env.
 
 Quando quiser parar o container, use:
 
 ```bash
-docker-compose down
+docker compose down
 ```
 
-### Acessando o container
+### Acessando o container e testando na prática
 
-Para entrar no container do Percona Server, utilize o comando:
+Aguarde alguns segundos para a inicialização do banco e acesse o terminal do MySQL diretamente no container:
 
 ```bash
-docker exec -it my-percona bash
+docker exec -it percona_84_js mysql -u dev -pdevpassword sandbox
+```
+
+Agora teste a execução da função JavaScript criada pelo `init.sql`:
+
+```sql
+SELECT formata_usuario('{"nome": "carlos", "ativo": 1}') AS resultado;
+```
+
+Resultado esperado:
+
+```text
++-------------------------------------------------------------------------+
+| resultado                                                               |
++-------------------------------------------------------------------------+
+| {"ativo": true, "nome": "CARLOS", "processado_em": "2026-10-26T..."}    |
++-------------------------------------------------------------------------+
+1 row in set (0.01 sec)
+```
+
+Para inspecionar se o componente V8 está devidamente carregado na instância:
+
+```sql
+SELECT * FROM mysql.component;
 ```
 
 ### Conectando no banco de dados
 
-Para acessar o MySQL, utilize as seguintes credenciais:
+Para acessar o MySQL (via terminal ou cliente GUI como DBeaver), utilize as credenciais configuradas no `.env`:
 
 - **Servidor:** `localhost`
-- **Porta:** `9999`
-- **Usuário:** `root`
-
-> Por padrão, o Percona Server for MySQL é inicializado com o usuário `root` e sem senha configurada.
+- **Porta:** `3308`
+- **Database inicial:** `sandbox`
+- **Usuário dev:** `dev` (senha: `devpassword`)
+- **Usuário root:** `root` (senha: `rootpassword`)
 
 ## Criando funções e procedures em JavaScript
 
 ### Instalando o JS stored program
 
-Para instalar o componente JS no Mysql, basta executar o script `install_js_programs.sh`.
+Ao subir o ambiente com `docker compose up -d --build`, o script `init.sql` já realiza a instalação e ativação automaticamente no primeiro boot. Caso precise habilitar manualmente em outra instância, basta executar os comandos SQL abaixo como `root`:
 
-Use o comando abaixo:
-
-```bash
-docker exec -it my-percona bash /tmp/install_js_programs.sh
+```sql
+INSTALL COMPONENT 'file://component_js_lang';
+GRANT CREATE_JS_ROUTINE ON *.* TO 'root'@'%';
+GRANT CREATE_JS_ROUTINE ON *.* TO 'dev'@'%';
 ```
 
 ### Criando funções e procedures em JavaScript no Percona Server MySQL
 
-Para criar e testar **funções** ou **procedures** em JavaScript no **Percona Server for MySQL**, o melhor é usar diretamente o **terminal mysql** para garantir maior compatibilidade.
+Você pode criar e testar **funções** ou **procedures** em JavaScript tanto pelo **terminal `mysql`** quanto por clientes gráficos (**MySQL Workbench**, **DBeaver**, etc.).
 
 Utilize os comandos `CREATE FUNCTION` ou `CREATE PROCEDURE` sempre incluindo a cláusula `LANGUAGE JS` para indicar que o corpo será escrito em JavaScript.
 
-O código JavaScript deve ser delimitado por `$$` para evitar conflitos com o delimitador padrão do MySQL.
+> **Dica para clientes GUI (MySQL Workbench / DBeaver):**  
+> - Crie sempre em uma **aba normal de Query SQL** (não use o assistente visual de botão direito *"Create Stored Procedure..."*, pois ele aceita apenas SQL tradicional).  
+> - O editor do MySQL Workbench pode sublinhar `LANGUAGE JS AS $$` em vermelho por não reconhecer essa sintaxe nova no validador visual dele, mas o servidor Percona 8.4 executa e cria a rotina normalmente.  
+> - Quando houver ponto e vírgula (`;`) dentro do código JavaScript, o cliente gráfico pode achar que o comando terminou no meio da função. Abaixo estão as **3 formas** de criar suas rotinas sem erro:
 
-> **Observação:**  
-> Em versões mais antigas do MySQL, pode ser necessário alterar o delimitador padrão utilizando o comando `DELIMITER $$` antes de criar a função ou procedure. Isso garante que o cliente mysql interprete corretamente o início e o fim do bloco de código JavaScript.
+#### 1. Usando `$$` com `DELIMITER //` (Recomendado no MySQL Workbench / DBeaver com `;` no JS)
 
-Exemplo:
+Ao alterar temporariamente o delimitador para `//`, você pode escrever várias linhas em JavaScript usando `;` normalmente:
 
 ```sql
-CREATE FUNCTION f1(n INT) RETURNS INT LANGUAGE JS AS $$
-return n * 42;
+DELIMITER //
+
+CREATE FUNCTION f1(n INT)
+RETURNS INT DETERMINISTIC LANGUAGE JS AS $$
+    const resultado = n * 42;
+    return resultado;
+$$//
+
+CREATE PROCEDURE p1(a INT, b INT, OUT r INT)
+LANGUAGE JS AS $$
+    r = a * b;
+$$//
+
+DELIMITER ;
+```
+
+#### 2. Usando `$$` direto (No terminal `mysql` ou omitindo `;` internos do JS na GUI)
+
+No terminal `mysql` (ou em GUIs caso você não utilize `;` no fim das linhas internas do JavaScript, já que no JS ele é opcional), não é necessário mudar o `DELIMITER`:
+
+```sql
+CREATE FUNCTION f1(n INT)
+RETURNS INT DETERMINISTIC LANGUAGE JS AS $$
+    return n * 42
 $$;
 
-CREATE PROCEDURE p1(a INT, b INT, OUT r INT) LANGUAGE JS AS $$
-r = a * b;
+CREATE PROCEDURE p1(a INT, b INT, OUT r INT)
+LANGUAGE JS AS $$
+    r = a * b
 $$;
+```
+
+#### 3. Usando aspas simples `'...'` no lugar de `$$` (Funciona em qualquer GUI sem `DELIMITER`)
+
+O Percona Server 8.4 também aceita o corpo do JavaScript como uma string entre aspas simples `'...'`. Como os `;` ficam dentro de uma string literal, o Workbench/DBeaver nunca corta o comando no meio:
+
+```sql
+CREATE FUNCTION f1(n INT)
+RETURNS INT DETERMINISTIC LANGUAGE JS AS '
+    const resultado = n * 42;
+    return resultado;
+';
+
+CREATE PROCEDURE p1(a INT, b INT, OUT r INT)
+LANGUAGE JS AS '
+    r = a * b;
+';
 ```
 
 ### Exemplo de criação de função em JS:
@@ -307,7 +393,7 @@ SELECT
         routine_definition,
         external_language
 FROM
-        ATION_SCHEMA.ROUTINES
+        INFORMATION_SCHEMA.ROUTINES
 WHERE
         external_language='JS';
 ```
@@ -839,6 +925,62 @@ Visualizando em um gráfico de linhas:
 - Mesmo usando lógicas condicionais no SQL (CASE WHEN), o mesmo se manteve com um bom desempenho.
 - As funções JS exigem execução do motor V8, conversão de tipos e chamadas externas para cada linha, o que impactou a performance.
 
+## Validação de emails com REGEX
+
+O objetivo deste teste é comparar a performance de validação de endereços de e-mail utilizando uma expressão regular complexa (baseada no padrão RFC 5322) entre uma Stored Function em SQL puro (`REGEXP`) e uma Stored Function em JavaScript (motor V8).
+
+Para isso, foram criadas duas funções equivalentes:
+- Uma usando SQL puro ([fn_validate_email_sql](sql_queries/fn_validate_email_sql.sql))
+- Outra usando JavaScript (JS Programs) ([fn_validate_email_js](sql_queries/fn_validate_email_js.sql))
+
+Os testes foram executados utilizando o método `BENCHMARK` (variando de `1.000` a `1.000.000` de iterações) em três cenários distintos de entrada:
+- **Cenário A — Validação com sucesso (`teste@dominio.com`):** E-mail válido padrão que percorre toda a estrutura da expressão regular até confirmar o casamento completo.
+- **Cenário B — Falha imediata (`teste.com`):** String curta sem o caractere `@`, onde o motor descarta a validação logo após o primeiro grupo.
+- **Cenário C — Falha no final (`teste@xxx.....com`):** String longa (~110 caracteres) que parece válida durante quase toda a leitura, mas falha apenas no final por conter dois pontos seguidos (`..com`), exigindo avaliação completa da cadeia.
+
+> Você pode ver as queries utilizadas neste teste aqui: [benchmark_validate_email](sql_queries/benchmark_validate_email.sql).
+
+Resultados detalhados por cenário:
+
+| Função         | Teste                                  | Tempo SQL (s) | Tempo JS (s) | Speedup (x) | Ganho (%) |
+| -------------- | -------------------------------------- | ------------- | ------------ | ----------- | --------- |
+| VALIDATE_EMAIL | Benchmark 1.000 (`teste@dominio.com`)  |         0.016 |        0.000 |    > 16.0x* |  ~100.0%* |
+| VALIDATE_EMAIL | Benchmark 1.000 (`teste.com`)          |         0.016 |        0.000 |    > 16.0x* |  ~100.0%* |
+| VALIDATE_EMAIL | Benchmark 1.000 (`teste@xxx.....com`)  |         0.016 |        0.016 |       1.00x |      0.0% |
+| VALIDATE_EMAIL | Benchmark 10.000 (`teste@dominio.com`) |         0.203 |        0.031 |       6.55x |     84.7% |
+| VALIDATE_EMAIL | Benchmark 10.000 (`teste.com`)         |         0.204 |        0.016 |      12.75x |     92.2% |
+| VALIDATE_EMAIL | Benchmark 10.000 (`teste@xxx.....com`) |         0.219 |        0.032 |       6.84x |     85.4% |
+| VALIDATE_EMAIL | Benchmark 100.000 (`teste@dominio.com`)|         2.015 |        0.203 |       9.93x |     89.9% |
+| VALIDATE_EMAIL | Benchmark 100.000 (`teste.com`)        |         2.015 |        0.218 |       9.24x |     89.2% |
+| VALIDATE_EMAIL | Benchmark 100.000 (`teste@xxx.....com`)|         2.187 |        0.234 |       9.35x |     89.3% |
+| VALIDATE_EMAIL | Benchmark 1.000.000 (`teste@dominio.com`)|      20.516 |        2.046 |      10.03x |     90.0% |
+| VALIDATE_EMAIL | Benchmark 1.000.000 (`teste.com`)      |        20.891 |        2.047 |      10.21x |     90.2% |
+| VALIDATE_EMAIL | Benchmark 1.000.000 (`teste@xxx.....com`)|      21.859 |        2.265 |       9.65x |     89.6% |
+
+*\*Nos testes de 1.000 iterações com `0.000s`, a execução em JS ficou abaixo do limiar de precisão de 1 ms do console, representando tempo de resposta quase instantâneo.*
+
+### Validação de E-mail: Média Geral dos Testes
+
+![chart_validate_email](images/chart_validate_email.png)
+
+Consolidando a média dos três cenários (sucesso, falha imediata e falha no final) para cada volume de iterações:
+
+| Iterações | Tempo SQL (s) | Tempo JS (s) | Speedup (x) | Ganho (%) |
+| :--- | :--- | :--- | :--- | :--- |
+| 1.000 | 0.016 | 0.005 | 3.2x | 68.8% |
+| 10.000 | 0.209 | 0.026 | 8.0x | 87.6% |
+| 100.000 | 2.072 | 0.218 | 9.5x | 89.5% |
+| 1.000.000 | 21.089 | 2.119 | 10.0x | 90.0% |
+
+*(s) = tempo em segundos*
+
+**Conclusões:**
+
+- **Superioridade absoluta do JS com Regex:** Em todos os volumes e cenários avaliados, a função em **JS Programs** superou com folga a Stored Function em SQL puro (`REGEXP`), estabilizando em **10x mais rápida** (redução de **90%** no tempo de execução) em 1.000.000 de iterações.
+- **Eficiência do motor V8 (Irregexp JIT):** O Google V8 utiliza o motor *Irregexp*, que compila expressões regulares diretamente para código de máquina altamente otimizado. Já na função SQL (`BEGIN ... RETURN (p_email REGEXP ...) END`), há o custo do interpretador procedural do MySQL somado à avaliação da engine ICU a cada invocação.
+- **Resiliência no pior caso (Cenário C):** Mesmo ao validar strings longas que falham apenas nos últimos caracteres (`teste@xxx.....com`), onde o motor precisa percorrer praticamente toda a cadeia, o JS manteve sua vantagem: em **1 milhão de execuções**, o JS concluiu em **2,26 segundos** contra **21,85 segundos** do SQL.
+- **Caso de uso ideal para JS no banco:** Esse resultado comprova na prática a proposta arquitetural da Percona — validações complexas de formato e regras baseadas em Regex dentro de rotinas são um dos melhores cenários para adotar `LANGUAGE JS` no Percona Server 8.4 LTS.
+
 # Erros comuns
 
 Deixo aqui alguns problemas que enfrentei durante este projeto, assim, caso alguém passe pela mesma dificuldade, pode consultar as soluções abaixo.
@@ -855,10 +997,12 @@ Isso significa que o usuário que você está tentando usar **não tem permissã
 
 No exemplo acima, o MySQL recebeu a conexão do IP do host Docker (`172.23.0.1`), mas o usuário `root` não está autorizado a se conectar de lá.
 
-Execute o script de configuração de permissões dentro do container:
+Com a configuração atual do `docker-compose.yml` e `init.sql`, os usuários `root`@`%` e `dev`@`%` já são criados com acesso remoto liberado. Caso precise liberar manualmente em outra instância, execute no MySQL:
 
-```bash
-docker exec -it my-percona bash /tmp/grant_root_permission.sh
+```sql
+CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY 'rootpassword';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
 ```
 
 ## Erro: "This function has none of DETERMINISTIC":
@@ -936,3 +1080,31 @@ Exemplo de resultado:
 ```
 
 No meu caso, resolvi o problema movendo o arquivo para o diretório seguro, que no exemplo acima é `/var/lib/mysql-files/`.
+
+## Erro no boot do container: "Another process with pid ... is using unix socket file":
+
+Ao subir o container com um script em `/docker-entrypoint-initdb.d/init.sql`, caso o container entre em loop de reinicialização (`exited with code 1 (restarting)`) exibindo nos logs:
+
+```text
+[ERROR] [MY-011300] [Server] Plugin mysqlx reported: 'Setup of socket: '/var/lib/mysql/mysqlx.sock' failed, another process with PID 57 is using UNIX socket file'
+[ERROR] [MY-010259] [Server] Another process with pid 57 is using unix socket file.
+[ERROR] [MY-010268] [Server] Unable to setup unix socket lock file.
+[ERROR] [MY-010119] [Server] Aborting
+```
+
+**Por que isso acontece?**
+
+1. No primeiro boot, o `docker-entrypoint.sh` sobe um processo temporário do MySQL (ex.: `PID 57`) apenas para executar os scripts dentro de `/docker-entrypoint-initdb.d/` (como o `init.sql`).
+2. Se **qualquer comando SQL dentro do `init.sql` falhar** (por exemplo, tentar rodar um `CREATE FUNCTION` sem declarar `DETERMINISTIC` quando o `log_bin` está ativo, gerando o `ERROR 1418`), o script de entrypoint interrompe a inicialização imediatamente com erro.
+3. Como o entrypoint aborta abruptamente, o `mysqld` temporário (`PID 57`) não é encerrado de forma limpa e deixa os arquivos de lock (`mysql.sock.lock` e `mysqlx.sock.lock`) gravados dentro do volume `/var/lib/mysql`.
+4. Quando o Docker tenta reiniciar o container (`restart: unless-stopped`), o banco encontra o volume já populado com o lock órfão do `PID 57` e aborta repetidamente.
+
+**Como resolver:**
+
+1. Certifique-se de que as funções no `init.sql` tenham `DETERMINISTIC` (ou `SET GLOBAL log_bin_trust_function_creators = 1;` / `--log-bin-trust-function-creators=1` no `docker-compose.yml`).
+2. Remova o container e o volume corrompido pela inicialização incompleta e suba novamente:
+
+```bash
+docker compose down -v
+docker compose up -d
+```
