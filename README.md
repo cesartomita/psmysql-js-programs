@@ -55,7 +55,6 @@ Como explicado no artigo *[JavaScript in MySQL: Extending SQL, Not Moving the Ap
   - [Índice](#índice)
   - [Início rápido](#início-rápido)
   - [Setup detalhado](#setup-detalhado)
-    - [Estrutura do Projeto](#estrutura-do-projeto)
     - [Subindo o container](#subindo-o-container)
     - [Acessando o container e testando na prática](#acessando-o-container-e-testando-na-prática)
     - [Conectando no banco de dados](#conectando-no-banco-de-dados)
@@ -108,58 +107,6 @@ Esse comando faz, automaticamente:
 > O MySQL ficará disponível na porta `3306` por padrão. Para alterar a porta, nome do container ou credenciais, edite o arquivo `.env`.
 
 ## Setup detalhado
-
-### Estrutura do Projeto 
-
-```
-percona-server-mysql-js-programs/
-│   .env
-│   docker-compose.yml
-│   Dockerfile
-│   init.sql
-│   README.md
-│
-├───images
-│       chart_capitalize_words_benchmark.png
-│       chart_capitalize_words_disney.png
-│       chart_flight_total_delay.png
-│       chart_query_flight_duration_minutes.png
-│       chart_ulid_benchmark.png
-│       chart_ulid_employees.png
-│       chart_ulid_loop_insert.png
-│       chart_upper_length_base64.png
-│       clear_console_log.png
-│       clear_console_log_2.png
-│       error_connect.png
-│       error_create_js_routine.png
-│       error_deterministic.png
-│       fn_fact.png
-│       sp_console_log.png
-│       sp_error_test.png
-│       sp_is_prime.png
-│       sp_len.png
-│
-└───sql_queries
-        benchmark_capitalize_words.sql
-        benchmark_ulid.sql
-        call_insert_tb_ulid.sql
-        fn_js_base64.sql
-        fn_js_capitalize_words.sql
-        fn_js_flight_duration_minutes.sql
-        fn_js_flight_total_delay.sql
-        fn_js_length.sql
-        fn_js_ulid.sql
-        fn_js_upper_case.sql
-        fn_sql_capitalize_words.sql
-        fn_sql_ulid.sql
-        performance_schema.sql
-        query_flight_duration_minutes.sql
-        query_flight_total_delay.sql
-        review_text.sql
-        sp_insert_ulid_js.sql
-        sp_insert_ulid_sql.sql
-        tb_ulid.sql
-```
 
 ### Subindo o container
 
